@@ -61,6 +61,8 @@ idle(check, _, _MqSState, _State) ->
 
 idle(do, queue_send, MqSState, State) ->
     {next_state, idle, MqSState, State};
+idle(do, {deliver_send, abort}, MqSState, State) ->
+    {next_state, idle, MqSState, State};
 idle(do, {deliver_send, _Transport}, MqSState, State) ->
     {next_state, idle, MqSState, State};
 idle(do, {control, {PeerId, [{normal, <<0:8>>}]}}, MqSState, State) ->

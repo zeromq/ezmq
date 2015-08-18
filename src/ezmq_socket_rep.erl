@@ -96,6 +96,9 @@ processing(check, {send, _Msg}, _MqSState, #state{last_recv = Transport}) ->
 processing(check, _, _MqSState, _State) ->
     {error, fsm};
 
+processing(do, {deliver_send, abort}, MqSState, State) ->
+    State1 = State#state{last_recv = none},
+    {next_state, idle, MqSState, State1};
 processing(do, {deliver_send, _Transport}, MqSState, State) ->
     State1 = State#state{last_recv = none},
     {next_state, idle, MqSState, State1};

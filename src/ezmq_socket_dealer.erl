@@ -63,6 +63,8 @@ idle(check, _, _MqSState, _State) ->
 
 idle(do, queue_send, MqSState, State) ->
     {next_state, idle, MqSState, State};
+idle(do, {deliver_send, abort}, MqSState, State) ->
+    {next_state, idle, MqSState, State};
 idle(do, {deliver_send, Transport}, MqSState, State) ->
     MqSState1 = ezmq:lb(Transport, MqSState),
     {next_state, idle, MqSState1, State};
