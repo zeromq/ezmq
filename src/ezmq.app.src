@@ -1,7 +1,7 @@
 {application, ezmq,
  [
   {description, "native Erlang 0MQ implementation"},
-  {vsn, "0.1"},
+  {vsn, "0.2"},
   {registered, []},
   {applications, [
                   kernel,
