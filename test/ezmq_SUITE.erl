@@ -256,14 +256,16 @@ basic_tests_dealer(Config) ->
 basic_test_router_req(Config, Cnt2, Mode, Size) ->
     {S1, S2} = create_bound_pair_multi(Config, router, req, Cnt2, Mode),
     Msg = list_to_binary(string:chars($X, Size)),
+    S2Msg = lists:zipwith(fun(S, Id) -> {S, <<Msg/binary, (integer_to_binary(Id))/binary>>} end,
+			  S2, lists:seq(1, Cnt2)),
 
     %% send a message for each client Socket and expect a result on each socket
-    lists:foreach(fun(S) -> ok = ezmq:send(S, [Msg]) end, S2),
-    lists:foreach(fun(_S) ->
-                          {ok, {Id, [<<>>, Msg]}} = ezmq:recv(S1),
-                          ok = ezmq:send(S1, {Id, [<<>>, Msg]})
+    lists:foreach(fun({S, SMsg}) -> ok = ezmq:send(S, [SMsg]) end, S2Msg),
+    lists:foreach(fun(_) ->
+                          {ok, {Id, [<<>>, InMsg]}} = ezmq:recv(S1),
+                          ok = ezmq:send(S1, {Id, [<<>>, InMsg]})
                   end, S2),
-    lists:foreach(fun(S) -> {ok, [Msg]} = ezmq:recv(S) end, S2),
+    lists:foreach(fun({S, SMsg}) -> {ok, [SMsg]} = ezmq:recv(S) end, shuffle_list(S2Msg)),
 
     ok = ezmq:close(S1),
     lists:foreach(fun(S) -> ok = ezmq:close(S) end, S2).
@@ -274,14 +276,16 @@ basic_tests_router(Config) ->
 basic_test_rep_req(Config, Cnt2, Mode, Size) ->
     {S1, S2} = create_bound_pair_multi(Config, rep, req, Cnt2, Mode),
     Msg = list_to_binary(string:chars($X, Size)),
+    S2Msg = lists:zipwith(fun(S, Id) -> {S, <<Msg/binary, (integer_to_binary(Id))/binary>>} end,
+			  S2, lists:seq(1, Cnt2)),
 
     %% send a message for each client Socket and expect a result on each socket
-    lists:foreach(fun(S) -> ok = ezmq:send(S, [Msg]) end, S2),
-    lists:foreach(fun(_S) ->
-                          {ok, [Msg]} = ezmq:recv(S1),
-                          ok = ezmq:send(S1, [Msg])
+    lists:foreach(fun({S, SMsg}) -> ok = ezmq:send(S, [SMsg]) end, S2Msg),
+    lists:foreach(fun(_) ->
+                          {ok, [InMsg]} = ezmq:recv(S1),
+                          ok = ezmq:send(S1, [InMsg])
                   end, S2),
-    lists:foreach(fun(S) -> {ok, [Msg]} = ezmq:recv(S) end, S2),
+    lists:foreach(fun({S, SMsg}) -> {ok, [SMsg]} = ezmq:recv(S) end, shuffle_list(S2Msg)),
 
     ok = ezmq:close(S1),
     lists:foreach(fun(S) -> ok = ezmq:close(S) end, S2).
@@ -302,6 +306,26 @@ basic_test_pub_sub(Config, Cnt2, Mode, Size) ->
 
 basic_tests_pub_sub(Config) ->
     basic_test_pub_sub(Config, 10, passive, 3).
+
+basic_test_router_dealer(Config, Cnt2, Mode, Size) ->
+    {S1, S2} = create_bound_pair_multi(Config, router, dealer, Cnt2, Mode),
+    Msg = list_to_binary(string:chars($X, Size)),
+    S2Msg = lists:zipwith(fun(S, Id) -> {S, <<Msg/binary, (integer_to_binary(Id))/binary>>} end,
+			  S2, lists:seq(1, Cnt2)),
+
+    %% send a message for each client Socket and expect a result on each socket
+    lists:foreach(fun({S, SMsg}) -> ok = ezmq:send(S, [SMsg]) end, S2Msg),
+    lists:foreach(fun(_) ->
+                          {ok, {Id, [InMsg]}} = ezmq:recv(S1),
+                          ok = ezmq:send(S1, {Id, [InMsg]})
+                  end, S2),
+    lists:foreach(fun({S, SMsg}) -> {ok, [SMsg]} = ezmq:recv(S) end, shuffle_list(S2Msg)),
+
+    ok = ezmq:close(S1),
+    lists:foreach(fun(S) -> ok = ezmq:close(S) end, S2).
+
+basic_tests_router_dealer(Config) ->
+    basic_test_router_dealer(Config, 10, passive, 3).
 
 shutdown_stress_test(Config) ->
     shutdown_stress_loop(Config, 10).
@@ -429,6 +453,14 @@ tcp_opts(Config) ->
     IP = proplists:get_value(localhost, Config, {127,0,0,1}),
     [INetType, {ifaddr, IP}].
 
+shuffle_list(List) ->
+    random:seed(now()),
+    {NewList, _} = lists:foldl(fun(_El, {Acc,Rest}) ->
+				      RandomEl = lists:nth( random:uniform(length(Rest)), Rest),
+				      {[RandomEl|Acc], lists:delete(RandomEl, Rest)}
+			      end, {[],List}, List),
+    NewList.
+
 init_per_suite(Config) ->
     ok = application:start(sasl),
     lager:start(),
@@ -519,4 +551,5 @@ all_tests() ->
      dealer_tcp_bind_close, dealer_tcp_connect_close, dealer_tcp_connect_timeout,
      basic_tests_rep_req, basic_tests_dealer, basic_tests_router,
      basic_tests_pub_sub,
+     basic_tests_router_dealer,
      shutdown_stress_test].
