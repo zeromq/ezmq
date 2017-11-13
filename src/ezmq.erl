@@ -345,6 +345,13 @@ handle_cast({deliver_accept, Transport, RemoteId}, State) ->
     State1 = transports_activate(Transport, RemoteId, State),
     send_owner_event(RemoteId, accepted, State1),
     lager:debug("DELIVER_ACCPET: ~p", [lager:pr(State1, ?MODULE)]),
+    if(State1#ezmq_socket.type == sub) ->
+          lager:debug("Subscribe transport: ~p, S ~p", [Transport,State]),
+          %TODO: add fitlters to State and subscribe to needed channels only
+          ezmq_link_send({[Transport], [<<1,"">>]}, State1);
+      true ->
+          ok
+    end,
     State2 = send_queue_run(State1),
     {noreply, State2};
 
