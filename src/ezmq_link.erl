@@ -122,15 +122,15 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 setup({accept, MqSocket, Version, Type, Identity, Socket}, State) ->
-    lager:debug("got setup"),
+    logger:debug("got setup"),
     NewState = State#state{version = Version, role = server,
                            type = Type, mqsocket = MqSocket,
                            identity = Identity, socket = Socket},
-    lager:debug("NewState: ~p", [NewState]),
+    logger:debug("NewState: ~p", [NewState]),
     send_greeting({next_state, open, NewState, ?CONNECT_TIMEOUT});
 
 setup({connect, MqSocket, Version, Type, Identity, tcp, Address, Port, TcpOpts, Timeout}, State) ->
-    lager:debug("got connect: ~w, ~w", [Address, Port]),
+    logger:debug("got connect: ~w, ~w", [Address, Port]),
     State1 = State#state{version = Version, role = client,
                          type = Type, mqsocket = MqSocket,
                          identity = Identity},
@@ -147,59 +147,59 @@ setup({connect, MqSocket, Version, Type, Identity, tcp, Address, Port, TcpOpts, 
     end.
 
 connecting(timeout, State) ->
-    lager:debug("timeout in connecting"),
+    logger:debug("timeout in connecting"),
     deliver_connect(State, {error, timeout}),
     {stop, normal, State};
 
 %% if we get a ZMTP 1.0 greeting or we are talking ZMTP 1.0 only, select ZMTP 1.0
 connecting({_FrameType, IdLength}, State = #state{version = {Major, _}})
   when Major == 1 ->
-    lager:debug("in connecting v1, got greeting: ~p", [IdLength]),
+    logger:debug("in connecting v1, got greeting: ~p", [IdLength]),
     handle_zmtp13_greeting(IdLength, State);
 
 connecting({short, IdLength}, State = #state{version = {_Major, _}}) ->
-    lager:debug("in connecting v~w, got greeting: ~p", [_Major, IdLength]),
+    logger:debug("in connecting v~w, got greeting: ~p", [_Major, IdLength]),
     NextStateInfo = handle_zmtp13_greeting(IdLength, State),
     finish_zmtp13_handshake(NextStateInfo);
 
 connecting({long, IdLength}, State = #state{version = {Major, _}}) ->
-    lager:debug("in connecting v~w, got signature: ~p", [Major, IdLength]),
+    logger:debug("in connecting v~w, got signature: ~p", [Major, IdLength]),
     send_major(next_handshake_state('$major', State#state{remote_id_len = IdLength}));
 
 connecting(_Msg, State) ->
-    lager:debug("Invalid message in connecting: ~p", [_Msg]),
+    logger:debug("Invalid message in connecting: ~p", [_Msg]),
     deliver_connect(State, {error, data}),
     {stop, normal, State}.
 
 open(timeout, State) ->
-    lager:debug("timeout in open"),
+    logger:debug("timeout in open"),
     {stop, normal, State};
 
 %% if we get a ZMTP 1.0 greeting or we are talking ZMTP 1.0 only, select ZMTP 1.0
 open({_FrameType, IdLength}, State = #state{version = {Major, _}})
   when Major == 1 ->
-    lager:debug("in open v1, got greeting: ~p", [IdLength]),
+    logger:debug("in open v1, got greeting: ~p", [IdLength]),
     handle_zmtp13_greeting(IdLength, State);
 
 open({short, IdLength}, State = #state{version = {_Major, _}}) ->
-    lager:debug("in open v~w, got greeting: ~p", [_Major, IdLength]),
+    logger:debug("in open v~w, got greeting: ~p", [_Major, IdLength]),
     NextStateInfo = handle_zmtp13_greeting(IdLength, State),
     finish_zmtp13_handshake(NextStateInfo);
 
 open({long, IdLength}, State = #state{version = {Major, _}}) ->
-    lager:debug("in open v~w, got signature: ~p", [Major, IdLength]),
+    logger:debug("in open v~w, got signature: ~p", [Major, IdLength]),
     send_major(next_handshake_state('$major', State#state{remote_id_len = IdLength}));
 
 open(_Msg, State) ->
-    lager:debug("Invalid message in open: ~p", [_Msg]),
+    logger:debug("Invalid message in open: ~p", [_Msg]),
     {stop, normal, State}.
 
 handshake(timeout, State) ->
-    lager:debug("timeout in open"),
+    logger:debug("timeout in open"),
     {stop, normal, State};
 
 handshake(_Msg, State = #state{hs_state = HsState}) ->
-    lager:debug("Invalid handshake message in ~w: ~p", [HsState, _Msg]),
+    logger:debug("Invalid handshake message in ~w: ~p", [HsState, _Msg]),
     {stop, normal, State}.
 
 handshake({1, _}, '$identity', Data, #state{remote_id_len = IdLength})
@@ -207,7 +207,7 @@ handshake({1, _}, '$identity', Data, #state{remote_id_len = IdLength})
     more;
 handshake({1, _}, '$identity', Data, #state{remote_id_len = IdLength} = State) ->
     <<RemoteId:IdLength/bytes, Rest/binary>> = Data,
-    lager:debug("in '$identity' v1, got remoteId: ~p", [RemoteId]),
+    logger:debug("in '$identity' v1, got remoteId: ~p", [RemoteId]),
     State1 = State#state{pending = Rest},
     State2 = remote_id_assign(RemoteId, State1),
     deliver_connected(State2),
@@ -219,7 +219,7 @@ handshake({2, _}, '$identity', Data, #state{remote_id_len = IdLength})
 
 handshake({2, _}, '$identity', <<0:8, IdLength:8/integer, RemoteId:IdLength/bytes, Rest/binary>>,
           #state{remote_id_len = IdLength} = State) ->
-    lager:debug("in '$identity' v2, remoteId: ~p", [RemoteId]),
+    logger:debug("in '$identity' v2, remoteId: ~p", [RemoteId]),
     State1 = State#state{pending = Rest},
     State2 = remote_id_assign(RemoteId, State1),
     deliver_connected(State2),
@@ -237,7 +237,7 @@ handshake(_, '$major', <<Major:8, Rest/binary>>, State)
     State1 = State#state{pending = Rest},
     negotiate_major(Major, State1);
 handshake(_, '$major', <<Major:8, _/binary>>, State) ->
-    lager:error("peer tried invalid protocol version ~w", [Major]),
+    logger:error("peer tried invalid protocol version ~w", [Major]),
     {stop, normal, State};
 
 %% TODO: handle ZMTP 3.0+
@@ -249,15 +249,15 @@ handshake(_, '$socketType', <<SocketType:8, Rest/binary>>, State) ->
     handle_socket_type(SocketType, State1);
 
 handshake(Version, HsState, Data, State) ->
-    lager:debug("in ~p:~p, invalid data ~p", [Version, HsState, Data]),
+    logger:debug("in ~p:~p, invalid data ~p", [Version, HsState, Data]),
     {stop, normal, State}.
 
 connected(timeout, State) ->
-    lager:debug("timeout in connected"),
+    logger:debug("timeout in connected"),
     {stop, normal, State};
 
 connected({in, Frames}, #state{mqsocket = MqSocket, remote_id = RemoteId} = State) ->
-    lager:debug("in connected Frames: ~p", [Frames]),
+    logger:debug("in connected Frames: ~p", [Frames]),
     ezmq:deliver_recv(MqSocket, {RemoteId, Frames}),
     {next_state, connected, State};
 
@@ -356,12 +356,12 @@ handle_info({'EXIT', MqSocket, _Reason}, _StateName, #state{mqsocket = MqSocket}
     {stop, normal, State#state{mqsocket = undefined}};
 
 handle_info({tcp, Socket, Data}, StateName, #state{socket = Socket} = State) ->
-    lager:debug("handle_info: ~p", [Data]),
+    logger:debug("handle_info: ~p", [Data]),
     State1 = State#state{pending = <<(State#state.pending)/binary, Data/binary>>},
     handle_data(StateName, State1, {next_state, StateName, State1});
 
 handle_info({tcp_closed, Socket}, _StateName, #state{socket = Socket} = State) ->
-    lager:debug("client disconnected: ~w", [Socket]),
+    logger:debug("client disconnected: ~w", [Socket]),
     {stop, normal, State}.
 
 handle_data(_StateName, #state{socket = Socket, pending = <<>>}, ProcessStateNext) ->
@@ -372,7 +372,7 @@ handle_data(StateName, #state{socket = Socket, pending = Pending} = State, Proce
        StateName =:= open ->
     {Msg, DataRest} = ezmq_frame:decode_greeting(Pending),
     State1 = State#state{pending = DataRest},
-    lager:debug("handle_data (greeting): decoded: ~p, rest: ~p", [Msg, DataRest]),
+    logger:debug("handle_data (greeting): decoded: ~p, rest: ~p", [Msg, DataRest]),
 
     case Msg of
         more ->
@@ -392,7 +392,7 @@ handle_data(StateName, #state{socket = Socket, pending = Pending} = State, Proce
 
 handle_data(handshake, State = #state{version = Version, hs_state = HsState, socket = Socket, pending = Pending},
             ProcessStateNext) ->
-    lager:debug("handshake ~w.~w ~w, got data: ~p", [element(1, Version), element(2, Version), HsState, Pending]),
+    logger:debug("handshake ~w.~w ~w, got data: ~p", [element(1, Version), element(2, Version), HsState, Pending]),
     case handshake(Version, HsState, Pending, State) of
         more ->
             next_state_socket_active(Socket, setelement(3, ProcessStateNext, State));
@@ -405,7 +405,7 @@ handle_data(handshake, State = #state{version = Version, hs_state = HsState, soc
 handle_data(StateName, #state{socket = Socket, version = Ver, pending = Pending} = State, ProcessStateNext) ->
     {Msg, DataRest} = ezmq_frame:decode(Ver, Pending),
     State1 = State#state{pending = DataRest},
-    lager:debug("handle_data: (~w, ~p) decoded: ~p, rest: ~p", [Ver, StateName, Msg, DataRest]),
+    logger:debug("handle_data: (~w, ~p) decoded: ~p, rest: ~p", [Ver, StateName, Msg, DataRest]),
 
     case Msg of
         more ->
@@ -421,9 +421,9 @@ handle_data(StateName, #state{socket = Socket, version = Ver, pending = Pending}
         {false, Frame} ->
             Frames = lists:reverse([Frame|State1#state.frames]),
             State2 = State1#state{frames = []},
-            lager:debug("handle_data: finale decoded: ~p", [Frames]),
+            logger:debug("handle_data: finale decoded: ~p", [Frames]),
             Reply = exec_sync(Frames, StateName, State2),
-            lager:debug("handle_data: reply: ~p", [lager:pr(?MODULE, Reply)]),
+            logger:debug("handle_data: reply: ~p", [logger:pr(?MODULE, Reply)]),
             handle_data_reply(Reply)
     end.
 
@@ -440,12 +440,12 @@ handle_data(StateName, #state{socket = Socket, version = Ver, pending = Pending}
 %%--------------------------------------------------------------------
 terminate(_Reason, _StateName, #state{mqsocket = MqSocket, socket = Socket})
   when is_port(Socket) ->
-    lager:debug("terminate"),
+    logger:debug("terminate"),
     catch ezmq:deliver_close(MqSocket),
     gen_tcp:close(Socket),
     ok;
 terminate(_Reason, _StateName, #state{mqsocket = MqSocket}) ->
-    lager:debug("terminate"),
+    logger:debug("terminate"),
     catch ezmq:deliver_close(MqSocket),
     ok.
 
@@ -523,7 +523,7 @@ handle_socket_type(RemoteSocketType, State = #state{type = Type}) ->
         ok ->
             next_handshake_state('$identity', State);
         Other ->
-            lager:warning("socket types ~w: ~w", [{Type, RemoteSocketTypeAtom}, Other]),
+            logger:warning("socket types ~w: ~w", [{Type, RemoteSocketTypeAtom}, Other]),
             {stop, normal, State}
     end.
 
@@ -574,7 +574,7 @@ send_packet(Packet, NextStateInfo) ->
         ok ->
             next_state_socket_active(Socket, NextStateInfo);
         {error, Reason} ->
-            lager:debug("error - Reason: ~p", [Reason]),
+            logger:debug("error - Reason: ~p", [Reason]),
             {stop, normal, State}
     end.
 
