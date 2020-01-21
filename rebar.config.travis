@@ -1,7 +1,7 @@
 %-*-Erlang-*-
 
 {deps, [
-	{lager, ".*", {git, "https://github.com/basho/lager.git", {branch, "master"}}},
+%	{lager, ".*", {git, "https://github.com/basho/lager.git", {branch, "master"}}},
 	{gen_listener_tcp, ".*", {git, "https://github.com/travelping/gen_listener_tcp.git", {branch, "master"}}},
 	{erlzmq, ".*", {git, "https://github.com/zeromq/erlzmq2.git", {branch, "2.x"}}}
        ]}.
@@ -10,4 +10,4 @@
 {cover_export_enabled,  false}.
 {cover_print_enabled,   true}.
 
-{erl_opts, [debug_info, {parse_transform, lager_transform}]}.
+{erl_opts, [debug_info]}.
