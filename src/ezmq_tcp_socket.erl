@@ -57,7 +57,7 @@ handle_accept(Sock, State = {MqSocket, Version, Type, Identity}) ->
         {ok, Pid} ->
             ezmq_link:accept(MqSocket, Version, Type, Identity, Pid, Sock);
         Other ->
-            lager:warning("failed to handle accept with error ~p", [Other]),
+            logger:warning("failed to handle accept with error ~p", [Other]),
             gen_tcp:close(Sock)
     end,
     {noreply, State}.
@@ -72,7 +72,7 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
-    lager:debug("ezmq_tcp_socket terminate on ~p", [_Reason]),
+    logger:debug("ezmq_tcp_socket terminate on ~p", [_Reason]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->

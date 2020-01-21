@@ -431,7 +431,7 @@ tcp_opts(Config) ->
 
 init_per_suite(Config) ->
     ok = application:start(sasl),
-    lager:start(),
+    %%lager:start(),
     %% lager:set_loglevel(lager_console_backend, debug),
     ok = application:start(gen_listener_tcp),
     ok = application:start(ezmq),

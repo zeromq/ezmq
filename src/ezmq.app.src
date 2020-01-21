@@ -7,7 +7,6 @@
                   kernel,
                   stdlib,
                   sasl,
-                  lager,
                   gen_listener_tcp
                  ]},
   {mod, { ezmq_app, []}},

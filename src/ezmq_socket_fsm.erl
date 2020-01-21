@@ -81,17 +81,17 @@ init(Module, Opts, MqSState) ->
 check(Action, MqSState = #ezmq_socket{fsm = Fsm}) ->
     #fsm_state{module = Module, state_name = StateName, state = State} = Fsm,
     R = Module:StateName(check, Action, MqSState, State),
-    lager:debug("ezmq_socket_fsm state: ~w, check: ~w, Result: ~w", [StateName, Action, R]),
+    logger:debug("ezmq_socket_fsm state: ~w, check: ~w, Result: ~w", [StateName, Action, R]),
     R.
 
 do(Action, MqSState = #ezmq_socket{fsm = Fsm}) ->
     #fsm_state{module = Module, state_name = StateName, state = State} = Fsm,
     case Module:StateName(do, Action, MqSState, State) of
         {error, Reason} ->
-            lager:error("socket fsm for ~w exited with ~p, (~p,~p)~n", [Action, Reason, MqSState, State]),
+            logger:error("socket fsm for ~w exited with ~p, (~p,~p)~n", [Action, Reason, MqSState, State]),
             error(Reason);
         {next_state, NextStateName, NextMqSState, NextState} ->
-            lager:debug("ezmq_socket_fsm: state: ~w, Action: ~w, next_state: ~w", [StateName, Action, NextStateName]),
+            logger:debug("ezmq_socket_fsm: state: ~w, Action: ~w, next_state: ~w", [StateName, Action, NextStateName]),
             NewFsm = Fsm#fsm_state{state_name = NextStateName, state = NextState},
             NextMqSState#ezmq_socket{fsm = NewFsm}
     end.
@@ -100,10 +100,10 @@ close(Transport, MqSState = #ezmq_socket{fsm = Fsm}) ->
     #fsm_state{module = Module, state_name = StateName, state = State} = Fsm,
     case Module:close(StateName, Transport, MqSState, State) of
         {error, Reason} ->
-            lager:error("socket fsm for ~w exited with ~p, (~p,~p)~n", [Transport, Reason, MqSState, State]),
+            logger:error("socket fsm for ~w exited with ~p, (~p,~p)~n", [Transport, Reason, MqSState, State]),
             error(Reason);
         {next_state, NextStateName, NextMqSState, NextState} ->
-            lager:debug("ezmq_socket_fsm: state: ~w, Transport: ~w, next_state: ~w", [StateName, Transport, NextStateName]),
+            logger:debug("ezmq_socket_fsm: state: ~w, Transport: ~w, next_state: ~w", [StateName, Transport, NextStateName]),
             NewFsm = Fsm#fsm_state{state_name = NextStateName, state = NextState},
             NextMqSState#ezmq_socket{fsm = NewFsm}
     end.

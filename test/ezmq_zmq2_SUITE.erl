@@ -542,7 +542,7 @@ basic_tests_ezmq(Fun, Transport, IP, Port, Type1, Id1, Type2, Id2, Mode, Size) -
 
 init_per_suite(Config) ->
     application:start(sasl),
-    lager:start(),
+    %%lager:start(),
     %% lager:set_loglevel(lager_console_backend, debug),
     application:start(gen_listener_tcp),
     application:start(ezmq),
